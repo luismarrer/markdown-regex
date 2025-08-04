@@ -37,7 +37,15 @@ Converts the provided Markdown text into its corresponding HTML representation.
   
 ## 🧪 Future Ideas
 
-[ ] Support for more Markdown features (lists, code blocks, bold/italic, etc.)
+- [X] h1 to h6 support
+- [X] bold support
+- [X] italic support
+- [X] code support
+- [ ] links support
+- [ ] images support
+- [ ] lists support
+- [ ] tables support
+- [ ] blockquotes support
 
 ## 📜 License
 
