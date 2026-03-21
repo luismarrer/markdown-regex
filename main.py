@@ -9,7 +9,7 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["https://luismarrero-me.localhost:1355", "https://luismarrero.me", "https://www.luismarrero.me"],
-    allow_methods=["POST"],
+    allow_methods=["*"],
     allow_headers=["*"])
 
 class MarkdownInput(BaseModel):
