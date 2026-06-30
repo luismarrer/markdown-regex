@@ -132,10 +132,35 @@ def parse_markdown(md_text: str) -> str:
     text = re.sub(r"_(.+?)_", r"<em>\1</em>", text)
 
     # 5. Images before links, so the link rule does not consume image syntax.
-    text = re.sub(r"!\[(.*?)\]\((.*?)\)", r'<img src="\2" alt="\1">', text)
+    text = re.sub(r"!\[([^\]]*?)\]\(([^)]*?)\)", r'<img src="\2" alt="\1">', text)
 
     # 6. Links: [text](url)
-    text = re.sub(r"\[(.*?)\]\((.*?)\)", r'<a href="\2">\1</a>', text)
+    def replace_link(match):
+        link_text = match.group(1)
+        url = match.group(2).strip()
+        
+        # Check if it already has a protocol, or is relative/anchor
+        if re.match(r'^(https?://|mailto:|tel:|javascript:|/|#|\.\.?/)', url, re.IGNORECASE):
+            fixed_url = url
+        else:
+            first_part = url.split('/')[0]
+            if '.' in first_part:
+                file_exts = {'.html', '.htm', '.php', '.js', '.css', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.pdf', '.json', '.md', '.txt', '.xml'}
+                if any(first_part.lower().endswith(ext) for ext in file_exts):
+                    fixed_url = url
+                elif re.match(r'^[a-zA-Z0-9][-a-zA-Z0-9.]*\.[a-zA-Z]{2,}$', first_part):
+                    fixed_url = f"https://{url}"
+                else:
+                    fixed_url = url
+            else:
+                fixed_url = url
+                
+        is_external = fixed_url.startswith(('http://', 'https://'))
+        if is_external:
+            return f'<a href="{fixed_url}" target="_blank" rel="noopener noreferrer">{link_text}</a>'
+        return f'<a href="{fixed_url}">{link_text}</a>'
+
+    text = re.sub(r"\[([^\]]*?)\]\(([^)]*?)\)", replace_link, text)
 
     # 7. Block-level structures. These run after inline formatting so list
     #    items, table cells, and blockquotes can contain simple inline markup.
