@@ -107,22 +107,6 @@ curl -X POST http://127.0.0.1:8000/parse \
 - FastAPI
 - Regex
 
----
-
-## 🧪 Future Ideas
-
-- [x] h1 to h6 support
-- [x] bold support
-- [x] italic support
-- [x] code support
-- [x] links support
-- [x] images support
-- [x] lists support
-- [x] tables support
-- [x] blockquotes support
-
----
-
 ## 💻 Development & Testing
 
 ### Running the API
