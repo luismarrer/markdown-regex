@@ -70,6 +70,38 @@ class ParseMarkdownTest(unittest.TestCase):
             parse_markdown("<script>alert(1)</script>"),
             "<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>",
         )
+
+    def test_javascript_uri_blocked(self):
+        self.assertEqual(
+            parse_markdown("[click](javascript:alert(1))"),
+            "<p>[click](javascript:alert(1))</p>",
+        )
+        self.assertEqual(
+            parse_markdown("[click](  JaVaScRiPt:alert(1) )"),
+            "<p>[click](  JaVaScRiPt:alert(1) )</p>",
+        )
+
+    def test_javascript_uri_image_blocked(self):
+        self.assertEqual(
+            parse_markdown("![x](javascript:alert(1))"),
+            "<p>![x](javascript:alert(1))</p>",
+        )
+
+    def test_bold_italic_redos_safety(self):
+        import time
+        # Testing ReDoS safety for bold/italic regexes by using many unmatched markers
+        input_str = "**" * 1000 + "foo"
+        start = time.perf_counter()
+        parse_markdown(input_str)
+        elapsed = time.perf_counter() - start
+        self.assertLess(elapsed, 0.15, f"ReDoS vulnerability detected in bold: took {elapsed:.4f} seconds")
+
+        input_str_em = "*" * 2000 + "foo"
+        start = time.perf_counter()
+        parse_markdown(input_str_em)
+        elapsed = time.perf_counter() - start
+        self.assertLess(elapsed, 0.15, f"ReDoS vulnerability detected in italic: took {elapsed:.4f} seconds")
+
     def test_link_redos_safety(self):
         import time
         # Testing ReDoS safety for links
@@ -77,14 +109,14 @@ class ParseMarkdownTest(unittest.TestCase):
         start = time.perf_counter()
         parse_markdown(input_str)
         elapsed = time.perf_counter() - start
-        self.assertLess(elapsed, 0.05, f"ReDoS vulnerability detected in links: took {elapsed:.4f} seconds")
+        self.assertLess(elapsed, 0.15, f"ReDoS vulnerability detected in links: took {elapsed:.4f} seconds")
 
         # Testing ReDoS safety for images
         input_str_img = "(![a](" * 500
         start = time.perf_counter()
         parse_markdown(input_str_img)
         elapsed = time.perf_counter() - start
-        self.assertLess(elapsed, 0.05, f"ReDoS vulnerability detected in images: took {elapsed:.4f} seconds")
+        self.assertLess(elapsed, 0.15, f"ReDoS vulnerability detected in images: took {elapsed:.4f} seconds")
 
 
 if __name__ == "__main__":

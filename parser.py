@@ -127,20 +127,31 @@ def parse_markdown(md_text: str) -> str:
         )
 
     # 4. Bold before italic, so ** isn't consumed by the * rule.
-    text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
-    text = re.sub(r"\*(.+?)\*", r"<em>\1</em>", text)
-    text = re.sub(r"_(.+?)_", r"<em>\1</em>", text)
+    text = re.sub(r"\*\*([^*]+?)\*\*", r"<strong>\1</strong>", text)
+    text = re.sub(r"\*([^*]+?)\*", r"<em>\1</em>", text)
+    text = re.sub(r"_([^_]+?)_", r"<em>\1</em>", text)
 
     # 5. Images before links, so the link rule does not consume image syntax.
-    text = re.sub(r"!\[([^\]]*?)\]\(([^)]*?)\)", r'<img src="\2" alt="\1">', text)
+    def replace_image(match):
+        alt = match.group(1)
+        src = match.group(2).strip()
+        if re.match(r'^\s*javascript\s*:', src, re.IGNORECASE):
+            return html.escape(match.group(0))
+        return f'<img src="{src}" alt="{alt}">'
+
+    text = re.sub(r"!\[([^\]]*?)\]\(([^)]*?)\)", replace_image, text)
 
     # 6. Links: [text](url)
     def replace_link(match):
         link_text = match.group(1)
         url = match.group(2).strip()
         
+        # Block dangerous URI schemes
+        if re.match(r'^\s*javascript\s*:', url, re.IGNORECASE):
+            return html.escape(match.group(0))
+
         # Check if it already has a protocol, or is relative/anchor
-        if re.match(r'^(https?://|mailto:|tel:|javascript:|/|#|\.\.?/)', url, re.IGNORECASE):
+        if re.match(r'^(https?://|mailto:|tel:|/|#|\.\.?/)', url, re.IGNORECASE):
             fixed_url = url
         else:
             first_part = url.split('/')[0]
