@@ -11,7 +11,7 @@ Built with [FastAPI](https://fastapi.tiangolo.com/) and configured with CORS sup
 
 ### Requirements
 
-- Python 3.8+
+- Python 3.9–3.12 with the pinned dependencies in `requirements.txt`
 
 ### Installation
 
@@ -21,13 +21,26 @@ cd markdown-regex
 pip install -r requirements.txt
 ```
 
+With `uv`, you can create a compatible local environment with:
+
+```bash
+uv venv --python 3.12 .venv
+uv pip install --python .venv/bin/python -r requirements.txt
+```
+
 ### Running the server
 
 ```bash
-uvicorn main:app --reload
+.venv/bin/python -m uvicorn main:app --reload
 ```
 
 The API will be available at `http://127.0.0.1:8000`, with interactive docs at `http://127.0.0.1:8000/docs`.
+
+### Running tests
+
+```bash
+.venv/bin/python -m unittest discover -s tests
+```
 
 ---
 
@@ -78,6 +91,11 @@ curl -X POST http://127.0.0.1:8000/parse \
 | `*text*` / `_text_`     | `<em>text</em>`                        |
 | `` `code` ``            | `<code>code</code>`                   |
 | `[text](url)`           | `<a href="url">text</a>`              |
+| `![alt](url)`           | `<img src="url" alt="alt">`           |
+| `- item` / `* item`     | `<ul><li>item</li></ul>`              |
+| `1. item`               | `<ol><li>item</li></ol>`              |
+| `> quote`               | `<blockquote><p>quote</p></blockquote>` |
+| pipe tables             | `<table>` with `<thead>` and `<tbody>` |
 | blank line              | new `<p>` paragraph                    |
 | single newline          | `<br>` inside a paragraph              |
 
@@ -98,10 +116,10 @@ curl -X POST http://127.0.0.1:8000/parse \
 - [x] italic support
 - [x] code support
 - [x] links support
-- [ ] images support
-- [ ] lists support
-- [ ] tables support
-- [ ] blockquotes support
+- [x] images support
+- [x] lists support
+- [x] tables support
+- [x] blockquotes support
 
 ---
 

@@ -2,9 +2,82 @@ import html
 import re
 
 
+BLOCK_TAG_RE = re.compile(r"^<(?:h[1-6]|ul|ol|blockquote|table)\b")
+
+
+def _split_cells(line: str) -> list[str]:
+    line = line.strip()
+    if line.startswith("|"):
+        line = line[1:]
+    if line.endswith("|"):
+        line = line[:-1]
+
+    return [cell.strip() for cell in line.split("|")]
+
+
+def _is_table_separator(line: str) -> bool:
+    cells = _split_cells(line)
+    if not cells:
+        return False
+
+    return all(re.fullmatch(r":?-{3,}:?", cell) for cell in cells)
+
+
+def _render_tables(text: str) -> str:
+    rendered_blocks: list[str] = []
+
+    for block in re.split(r"\n\s*\n", text):
+        lines = [line.strip() for line in block.split("\n") if line.strip()]
+
+        if len(lines) >= 2 and "|" in lines[0] and _is_table_separator(lines[1]):
+            headers = _split_cells(lines[0])
+            rows = [_split_cells(line) for line in lines[2:] if "|" in line]
+
+            header_html = "".join(f"<th>{cell}</th>" for cell in headers)
+            body_html = "".join(
+                "<tr>"
+                + "".join(f"<td>{row[index] if index < len(row) else ''}</td>" for index in range(len(headers)))
+                + "</tr>"
+                for row in rows
+            )
+
+            rendered_blocks.append(
+                f"<table><thead><tr>{header_html}</tr></thead><tbody>{body_html}</tbody></table>"
+            )
+        else:
+            rendered_blocks.append(block)
+
+    return "\n\n".join(rendered_blocks)
+
+
+def _render_blockquotes(text: str) -> str:
+    def render(match: re.Match) -> str:
+        lines = [
+            re.sub(r"^&gt;\s?", "", line).strip()
+            for line in match.group(0).strip().split("\n")
+        ]
+        content = "<br>".join(line for line in lines if line)
+        return f"<blockquote><p>{content}</p></blockquote>"
+
+    return re.sub(r"(?m)(?:^&gt;\s?.+(?:\n|$))+", render, text)
+
+
+def _render_lists(text: str) -> str:
+    def render_unordered(match: re.Match) -> str:
+        items = re.findall(r"(?m)^[-+*]\s+(.+)$", match.group(0))
+        return "<ul>" + "".join(f"<li>{item.strip()}</li>" for item in items) + "</ul>"
+
+    def render_ordered(match: re.Match) -> str:
+        items = re.findall(r"(?m)^\d+\.\s+(.+)$", match.group(0))
+        return "<ol>" + "".join(f"<li>{item.strip()}</li>" for item in items) + "</ol>"
+
+    text = re.sub(r"(?m)(?:^[-+*]\s+.+(?:\n|$))+", render_unordered, text)
+    return re.sub(r"(?m)(?:^\d+\.\s+.+(?:\n|$))+", render_ordered, text)
+
+
 def _wrap_blocks(text: str) -> str:
     """Group lines into <p> blocks (split on blank lines), joining single
-    newlines with <br>. Heading lines are passed through untouched."""
+    newlines with <br>. Already-rendered block tags are passed through."""
     rendered: list[str] = []
     for block in re.split(r"\n\s*\n", text):
         if not block.strip():
@@ -21,7 +94,7 @@ def _wrap_blocks(text: str) -> str:
             line = line.strip()
             if not line:
                 continue
-            if re.match(r"<h[1-6]>", line):
+            if BLOCK_TAG_RE.match(line):
                 flush()
                 rendered.append(line)
             else:
@@ -58,14 +131,23 @@ def parse_markdown(md_text: str) -> str:
     text = re.sub(r"\*(.+?)\*", r"<em>\1</em>", text)
     text = re.sub(r"_(.+?)_", r"<em>\1</em>", text)
 
-    # 5. Links: [text](url)
+    # 5. Images before links, so the link rule does not consume image syntax.
+    text = re.sub(r"!\[(.*?)\]\((.*?)\)", r'<img src="\2" alt="\1">', text)
+
+    # 6. Links: [text](url)
     text = re.sub(r"\[(.*?)\]\((.*?)\)", r'<a href="\2">\1</a>', text)
 
-    # 6. Wrap blocks: paragraphs (blank-line separated) and <br> for single
-    #    newlines. Heading lines are emitted as-is, never wrapped in <p>.
+    # 7. Block-level structures. These run after inline formatting so list
+    #    items, table cells, and blockquotes can contain simple inline markup.
+    text = _render_tables(text)
+    text = _render_blockquotes(text)
+    text = _render_lists(text)
+
+    # 8. Wrap blocks: paragraphs (blank-line separated) and <br> for single
+    #    newlines. Rendered block tags are emitted as-is, never wrapped in <p>.
     text = _wrap_blocks(text)
 
-    # 7. Restore the stashed code spans.
+    # 9. Restore the stashed code spans.
     text = re.sub(
         r"\x00(\d+)\x00",
         lambda m: f"<code>{code_spans[int(m.group(1))]}</code>",
