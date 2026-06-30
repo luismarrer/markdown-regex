@@ -76,7 +76,7 @@ curl -X POST http://127.0.0.1:8000/parse \
 
 ```json
 {
-  "html": "<h1>Hello <strong>World</strong> with a <a href=\"https://luismarrero.me\">link</a></h1>"
+  "html": "<h1>Hello <strong>World</strong> with a <a href=\"https://luismarrero.me\" target=\"_blank\" rel=\"noopener noreferrer\">link</a></h1>"
 }
 ```
 
@@ -90,7 +90,7 @@ curl -X POST http://127.0.0.1:8000/parse \
 | `**text**`              | `<strong>text</strong>`               |
 | `*text*` / `_text_`     | `<em>text</em>`                        |
 | `` `code` ``            | `<code>code</code>`                   |
-| `[text](url)`           | `<a href="url">text</a>`              |
+| `[text](url)`           | `<a href="url">text</a>` (external links open in a new tab; protocol-less domains auto-prefixed with `https://`) |
 | `![alt](url)`           | `<img src="url" alt="alt">`           |
 | `- item` / `* item`     | `<ul><li>item</li></ul>`              |
 | `1. item`               | `<ol><li>item</li></ol>`              |
@@ -122,6 +122,22 @@ curl -X POST http://127.0.0.1:8000/parse \
 - [x] blockquotes support
 
 ---
+
+## 💻 Development & Testing
+
+### Running the API
+
+Start the development server:
+```bash
+uvicorn main:app --reload
+```
+
+### Running Tests
+
+To run the test suite:
+```bash
+python -m pytest tests/ -v
+```
 
 ## 📜 License
 
